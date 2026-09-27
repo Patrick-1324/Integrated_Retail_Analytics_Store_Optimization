@@ -1,0 +1,25 @@
+@"
+# Virtual environment
+retail_opt/
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+*.env
+
+# Optional: local data/model outputs
+# data/
+# models/
+"@ | Set-Content .gitignore

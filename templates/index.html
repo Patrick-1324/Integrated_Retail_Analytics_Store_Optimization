@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Integrated Retail Analytics Dashboard</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --surface: #ffffff;
+      --surface-2: #f9fafc;
+      --text: #18212f;
+      --muted: #667085;
+      --line: #e6eaf0;
+      --primary: #2457d6;
+      --teal: #128c7e;
+      --orange: #dd6b20;
+      --red: #d64545;
+      --purple: #6d4aff;
+      --shadow: 0 8px 28px rgba(30, 45, 70, .08);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .shell { max-width: 1540px; margin: 0 auto; padding: 22px; }
+    .header {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 20px;
+      margin-bottom: 18px;
+    }
+    .eyebrow { color: var(--primary); font-weight: 750; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 5px 0 5px; font-size: clamp(26px, 3vw, 40px); line-height: 1.08; }
+    .subtitle { color: var(--muted); margin: 0; max-width: 850px; }
+    .badge { background: #e9f0ff; color: var(--primary); padding: 8px 11px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+
+    .panel, .chart-card, .table-card, .kpi {
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+    }
+    .panel { padding: 16px; margin-bottom: 18px; }
+    .filters { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+    .field { display: flex; flex-direction: column; gap: 6px; min-width: 190px; }
+    label { font-size: 12px; color: var(--muted); font-weight: 700; }
+    select, button {
+      height: 42px; border: 1px solid var(--line); border-radius: 10px; background: white; padding: 0 12px;
+      color: var(--text); font-size: 14px;
+    }
+    button { background: var(--primary); color: white; border-color: var(--primary); font-weight: 700; cursor: pointer; }
+    button.secondary { background: white; color: var(--text); border-color: var(--line); }
+    button:hover { filter: brightness(.98); }
+    .filter-status { margin-left: auto; color: var(--muted); font-size: 13px; align-self: center; }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .kpi { padding: 16px; min-height: 106px; }
+    .kpi .label { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .kpi .value { margin-top: 9px; font-size: 24px; font-weight: 800; letter-spacing: -.02em; }
+    .kpi .hint { color: var(--muted); font-size: 11px; margin-top: 4px; }
+
+    .section-title { display: flex; justify-content: space-between; align-items: end; gap: 10px; margin: 28px 0 10px; }
+    .section-title h2 { margin: 0; font-size: 20px; }
+    .section-title p { margin: 0; color: var(--muted); font-size: 13px; }
+
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .chart-card { padding: 12px 12px 8px; min-height: 380px; }
+    .chart-card.tall { min-height: 520px; }
+    .chart { width: 100%; height: 350px; }
+    .chart.tall { height: 490px; }
+    .card-title { padding: 4px 6px 0; font-weight: 800; font-size: 14px; }
+    .card-subtitle { padding: 2px 6px 0; color: var(--muted); font-size: 12px; }
+
+    .table-card { overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 11px 12px; border-bottom: 1px solid var(--line); text-align: left; font-size: 13px; }
+    th { color: var(--muted); background: var(--surface-2); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+    tr:last-child td { border-bottom: 0; }
+    .metric-good { color: var(--teal); font-weight: 800; }
+    .metric-bad { color: var(--red); }
+
+    .insight-strip {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 14px;
+    }
+    .insight { padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+    .insight strong { display: block; font-size: 18px; margin-bottom: 4px; }
+    .insight span { color: var(--muted); font-size: 12px; }
+
+    .error {
+      margin: 50px auto; max-width: 900px; background: #fff4f4; border: 1px solid #ffd3d3; border-radius: 16px;
+      padding: 24px; white-space: pre-wrap; color: #8a1f1f;
+    }
+    code { background: #eef2f7; border-radius: 6px; padding: 2px 5px; color: #344054; }
+    footer { color: var(--muted); font-size: 12px; text-align: center; padding: 28px 0 8px; }
+
+    @media (max-width: 1200px) {
+      .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .grid-3 { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 850px) {
+      .shell { padding: 14px; }
+      .header { flex-direction: column; }
+      .grid-2 { grid-template-columns: 1fr; }
+      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .insight-strip { grid-template-columns: 1fr 1fr; }
+      .filter-status { width: 100%; margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="header">
+      <div>
+        <div class="eyebrow">Retail Intelligence</div>
+        <h1>Store Optimization & Demand Forecasting</h1>
+        <p class="subtitle">Interactive Flask dashboard for the Integrated Retail Analytics project: sales performance, holiday behavior, anomaly detection, store segmentation, department associations, and forecasting quality.</p>
+      </div>
+      <div class="badge">Flask + Plotly</div>
+    </header>
+
+    {% if startup_error %}
+      <section class="error">
+        <strong>Dashboard startup error</strong>
+
+{{ startup_error }}
+
+Expected structure:
+<code>app.py</code>
+<code>templates/index.html</code>
+<code>data/sales_data-set.csv</code>
+<code>data/Features_data_set.csv</code>
+<code>data/stores_data-set.csv</code>
+
+Optional notebook outputs:
+<code>models/store_segments.csv</code>
+      </section>
+    {% else %}
+      <section class="panel">
+        <div class="filters">
+          <div class="field">
+            <label for="storeFilter">Store</label>
+            <select id="storeFilter">
+              <option value="all">All stores</option>
+              {% for store in dashboard.filters.stores %}<option value="{{ store }}">Store {{ store }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="deptFilter">Department</label>
+            <select id="deptFilter">
+              <option value="all">All departments</option>
+              {% for dept in dashboard.filters.departments %}<option value="{{ dept }}">Dept {{ dept }}</option>{% endfor %}
+            </select>
+          </div>
+          <button id="applyFilter">Apply filter</button>
+          <button id="resetFilter" class="secondary">Reset</button>
+          <div id="filterStatus" class="filter-status">Showing full chain</div>
+        </div>
+      </section>
+
+      <section class="kpi-grid">
+        <article class="kpi"><div class="label">Total Sales</div><div id="kpiTotalSales" class="value"></div><div class="hint">Across the full historical dataset</div></article>
+        <article class="kpi"><div class="label">Average Chain Week</div><div id="kpiAvgWeek" class="value"></div><div class="hint">Sales aggregated by week</div></article>
+        <article class="kpi"><div class="label">Stores</div><div class="value">{{ dashboard.meta.stores }}</div><div class="hint">Store network</div></article>
+        <article class="kpi"><div class="label">Departments</div><div class="value">{{ dashboard.meta.departments }}</div><div class="hint">Distinct department IDs</div></article>
+        <article class="kpi"><div class="label">Robust-Z Anomalies</div><div id="kpiAnomalies" class="value"></div><div class="hint">MAD z-score &gt; 3.5</div></article>
+        <article class="kpi"><div class="label">Best Forecast WMAE</div><div class="value">{{ "{:,.0f}".format(dashboard.meta.best_wmae) }}</div><div class="hint">{{ dashboard.meta.best_model }}</div></article>
+      </section>
+
+      <div class="section-title"><div><h2>Executive Overview</h2><p>Performance across time, stores, departments, and holidays.</p></div><p>{{ dashboard.meta.date_min }} → {{ dashboard.meta.date_max }}</p></div>
+      <section class="grid-2">
+        <article class="chart-card">
+          <div class="card-title">Weekly Sales Trend</div>
+          <div class="card-subtitle" id="trendSubtitle">All stores / all departments</div>
+          <div id="trendChart" class="chart"></div>
+        </article>
+        <article class="chart-card">
+          <div class="card-title">Average Weekly Sales by Store</div>
+          <div class="card-subtitle">Color indicates store type.</div>
+          <div id="storeChart" class="chart"></div>
+        </article>
+        <article class="chart-card">
+          <div class="card-title">Top Departments by Average Weekly Sales</div>
+          <div class="card-subtitle">Top 20 departments ranked by average sales.</div>
+          <div id="deptChart" class="chart"></div>
+        </article>
+        <article class="chart-card">
+          <div class="card-title">Holiday Sales Uplift</div>
+          <div class="card-subtitle">Relative to non-holiday weeks.</div>
+          <div id="holidayChart" class="chart"></div>
+        </article>
+      </section>
+
+      <div class="insight-strip">
+        <div class="insight"><strong>{{ "{:.1%}".format(dashboard.meta.top10_department_share) }}</strong><span>Share of total sales generated by the top 10 departments.</span></div>
+        <div class="insight"><strong>+39.7%</strong><span>Notebook-observed Thanksgiving uplift versus non-holiday weeks.</span></div>
+        <div class="insight"><strong>{{ "{:.2%}".format(dashboard.meta.anomaly_rate) }}</strong><span>Store-department rows flagged by the robust statistical anomaly layer.</span></div>
+        <div class="insight"><strong>{{ "{:.2%}".format(dashboard.notebook_summary.ml_chain_mape) }}</strong><span>Best ML model chain-level MAPE on the holdout period.</span></div>
+      </div>
+
+      <div class="section-title"><div><h2>Anomaly Detection</h2><p>Where unusual store-department weeks are concentrated.</p></div></div>
+      <section class="grid-2">
+        <article class="chart-card tall">
+          <div class="card-title">Statistical Anomalies — Department × Store</div>
+          <div class="card-subtitle">Count of weeks flagged by robust MAD z-score.</div>
+          <div id="anomalyHeatmap" class="chart tall"></div>
+        </article>
+        <article class="chart-card tall">
+          <div class="card-title">Anomaly Timeline</div>
+          <div class="card-subtitle">Number of anomalous store-department rows per week.</div>
+          <div id="anomalyTimeline" class="chart tall"></div>
+        </article>
+      </section>
+
+      <div class="section-title"><div><h2>Store Segmentation</h2><p>The notebook selected k=2 by silhouette score; the dashboard uses saved segments when available.</p></div></div>
+      <section class="grid-2">
+        <article class="chart-card">
+          <div class="card-title">Store Size vs Average Weekly Sales</div>
+          <div class="card-subtitle">Color indicates final K-Means cluster.</div>
+          <div id="segmentScatter" class="chart"></div>
+        </article>
+        <article class="table-card">
+          <table>
+            <thead><tr><th>Cluster</th><th>Stores</th><th>Avg weekly sales</th><th>Avg size</th></tr></thead>
+            <tbody>
+              {% for row in dashboard.segment_summary %}
+              <tr><td>Cluster {{ row.Cluster }}</td><td>{{ row.stores }}</td><td>{{ "{:,.0f}".format(row.avg_weekly_sales) }}</td><td>{{ "{:,.0f}".format(row.avg_size) }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </article>
+      </section>
+
+      <div class="section-title"><div><h2>Department Associations</h2><p>Co-movement is based on correlations of de-seasonalised week-over-week percentage changes.</p></div></div>
+      <section class="grid-2">
+        <article class="chart-card tall">
+          <div class="card-title">Department Co-movement Correlation</div>
+          <div class="card-subtitle">Positive values move together; negative values are potential substitution/cannibalisation signals.</div>
+          <div id="corrHeatmap" class="chart tall"></div>
+        </article>
+        <article class="table-card">
+          <table>
+            <thead><tr><th>Dept A</th><th>Dept B</th><th>Correlation</th></tr></thead>
+            <tbody>
+              {% for row in dashboard.top_pairs[:12] %}
+              <tr><td>{{ row.Dept_A }}</td><td>{{ row.Dept_B }}</td><td class="metric-good">{{ "{:.3f}".format(row.corr) }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </article>
+      </section>
+
+      <div class="section-title"><div><h2>Forecasting Performance</h2><p>Time-based 12-week holdout; primary metric is holiday-weighted MAE (WMAE).</p></div></div>
+      <section class="grid-2">
+        <article class="chart-card">
+          <div class="card-title">Model WMAE</div>
+          <div class="card-subtitle">Lower is better. Linear models are shown but dominate the scale.</div>
+          <div id="modelChart" class="chart"></div>
+        </article>
+        <article class="table-card">
+          <table>
+            <thead><tr><th>Model</th><th>WMAE</th><th>MAE</th><th>RMSE</th><th>R²</th></tr></thead>
+            <tbody>
+              {% for row in dashboard.model_results %}
+              <tr>
+                <td>{{ row.model }}</td>
+                <td class="{{ 'metric-good' if row.model == dashboard.meta.best_model else '' }}">{{ "{:,.0f}".format(row.WMAE) }}</td>
+                <td>{{ "{:,.0f}".format(row.MAE) }}</td>
+                <td>{{ "{:,.0f}".format(row.RMSE) }}</td>
+                <td class="{{ 'metric-bad' if row.R2 < 0 else '' }}">{{ "{:.3f}".format(row.R2) }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </article>
+      </section>
+
+      <div class="insight-strip">
+        <div class="insight"><strong>{{ dashboard.notebook_summary.best_model }}</strong><span>Best tested store-department forecasting model by WMAE.</span></div>
+        <div class="insight"><strong>{{ "{:.2%}".format(dashboard.notebook_summary.ml_chain_mape) }}</strong><span>Best ML chain-level MAPE.</span></div>
+        <div class="insight"><strong>{{ "{:.2%}".format(dashboard.notebook_summary.sarima_chain_mape) }}</strong><span>SARIMA chain-level test MAPE.</span></div>
+        <div class="insight"><strong>{{ "{:.1%}".format(dashboard.notebook_summary.external_importance_share) }}</strong><span>External-factor share of tuned boosting feature importance.</span></div>
+      </div>
+
+      <footer>Integrated Retail Analytics · {{ dashboard.meta.rows | int }} store-department-week observations · Holdout starts {{ dashboard.notebook_summary.train_cutoff }}</footer>
+    {% endif %}
+  </main>
+
+  {% if not startup_error %}
+  <script>
+    const D = {{ dashboard | tojson }};
+    const baseLayout = {
+      margin: {l: 60, r: 20, t: 25, b: 55},
+      paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
+      font: {family: 'Inter, system-ui, sans-serif', color: '#344054', size: 12},
+      xaxis: {gridcolor: '#eef1f5', zerolinecolor: '#eef1f5'},
+      yaxis: {gridcolor: '#eef1f5', zerolinecolor: '#eef1f5'},
+      hoverlabel: {bgcolor: '#18212f', font: {color: '#ffffff'}},
+      showlegend: false
+    };
+    const cfg = {responsive: true, displaylogo: false};
+
+    function money(v) {
+      if (Math.abs(v) >= 1e9) return '$' + (v/1e9).toFixed(2) + 'B';
+      if (Math.abs(v) >= 1e6) return '$' + (v/1e6).toFixed(2) + 'M';
+      if (Math.abs(v) >= 1e3) return '$' + (v/1e3).toFixed(1) + 'K';
+      return '$' + Number(v).toFixed(0);
+    }
+
+    document.getElementById('kpiTotalSales').textContent = money(D.meta.total_sales);
+    document.getElementById('kpiAvgWeek').textContent = money(D.meta.avg_chain_weekly_sales);
+    document.getElementById('kpiAnomalies').textContent = D.meta.anomaly_count.toLocaleString();
+
+    function drawTrend(payload) {
+      const traces = [{
+        x: payload.dates, y: payload.sales, type: 'scatter', mode: 'lines',
+        line: {color: '#2457d6', width: 2.3}, hovertemplate: '%{x}<br>Sales: $%{y:,.0f}<extra></extra>'
+      }];
+      if (payload.anomaly_dates?.length) {
+        traces.push({
+          x: payload.anomaly_dates, y: payload.anomaly_sales, type: 'scatter', mode: 'markers',
+          marker: {color: '#d64545', size: 8, line: {color: '#ffffff', width: 1}},
+          hovertemplate: 'Flagged week<br>%{x}<br>Sales: $%{y:,.0f}<extra></extra>'
+        });
+      }
+      Plotly.react('trendChart', traces, {...baseLayout, yaxis: {...baseLayout.yaxis, tickformat: '$,.2s'}}, cfg);
+    }
+
+    const initialTrend = {
+      dates: D.chain.map(r => r.Date),
+      sales: D.chain.map(r => r.Weekly_Sales),
+      anomaly_dates: [], anomaly_sales: []
+    };
+    drawTrend(initialTrend);
+
+    const storeTypes = [...new Set(D.store_avg.map(r => r.Type))];
+    Plotly.newPlot('storeChart', storeTypes.map((type, i) => ({
+      x: D.store_avg.filter(r => r.Type === type).map(r => String(r.Store)),
+      y: D.store_avg.filter(r => r.Type === type).map(r => r.Weekly_Sales),
+      type: 'bar', name: `Type ${type}`,
+      hovertemplate: 'Store %{x}<br>Avg: $%{y:,.0f}<extra>Type ' + type + '</extra>'
+    })), {...baseLayout, barmode: 'group', showlegend: true, legend: {orientation:'h', y:1.12}, yaxis: {...baseLayout.yaxis, tickformat:'$,.2s'}}, cfg);
+
+    const deptTop = D.dept_avg.slice(0, 20).reverse();
+    Plotly.newPlot('deptChart', [{
+      x: deptTop.map(r => r.Weekly_Sales), y: deptTop.map(r => 'Dept ' + r.Dept), type: 'bar', orientation: 'h',
+      marker: {color: '#128c7e'}, hovertemplate: '%{y}<br>Avg: $%{x:,.0f}<extra></extra>'
+    }], {...baseLayout, margin:{l:78,r:20,t:25,b:45}, xaxis:{...baseLayout.xaxis,tickformat:'$,.2s'}}, cfg);
+
+    Plotly.newPlot('holidayChart', [{
+      x: D.holidays.map(r => r.holiday), y: D.holidays.map(r => r.uplift_pct), type: 'bar',
+      marker: {color: D.holidays.map(r => r.uplift_pct >= 0 ? '#128c7e' : '#d64545')},
+      text: D.holidays.map(r => (r.uplift_pct >= 0 ? '+' : '') + r.uplift_pct.toFixed(1) + '%'), textposition: 'outside',
+      hovertemplate: '%{x}<br>Uplift: %{y:.1f}%<extra></extra>'
+    }], {...baseLayout, yaxis:{...baseLayout.yaxis, ticksuffix:'%'}, shapes:[{type:'line',x0:-.5,x1:4.5,y0:0,y1:0,line:{color:'#98a2b3',width:1}}]}, cfg);
+
+    Plotly.newPlot('anomalyHeatmap', [{
+      x: D.anomaly_heatmap.stores.map(String), y: D.anomaly_heatmap.departments.map(String), z: D.anomaly_heatmap.z,
+      type: 'heatmap', colorscale: 'Reds', hovertemplate: 'Store %{x}<br>Dept %{y}<br>Anomalous weeks: %{z}<extra></extra>',
+      colorbar: {title: '# weeks'}
+    }], {...baseLayout, margin:{l:55,r:60,t:25,b:55}, xaxis:{title:'Store'}, yaxis:{title:'Department'}}, cfg);
+
+    Plotly.newPlot('anomalyTimeline', [{
+      x: D.anomaly_timeline.map(r => r.Date), y: D.anomaly_timeline.map(r => r.count), type:'bar',
+      marker:{color:'#dd6b20'}, hovertemplate:'%{x}<br>Anomalies: %{y}<extra></extra>'
+    }], {...baseLayout, xaxis:{...baseLayout.xaxis,title:'Week'}, yaxis:{...baseLayout.yaxis,title:'# anomalous rows'}}, cfg);
+
+    const clusters = [...new Set(D.store_avg.map(r => r.Cluster))].sort();
+    Plotly.newPlot('segmentScatter', clusters.map(cluster => {
+      const rows = D.store_avg.filter(r => r.Cluster === cluster);
+      return {
+        x: rows.map(r => r.Size), y: rows.map(r => r.Weekly_Sales), text: rows.map(r => 'Store ' + r.Store),
+        type:'scatter', mode:'markers+text', textposition:'top center', name:'Cluster ' + cluster,
+        marker:{size:11, opacity:.78}, hovertemplate:'%{text}<br>Size: %{x:,.0f}<br>Avg sales: $%{y:,.0f}<extra></extra>'
+      };
+    }), {...baseLayout, showlegend:true, legend:{orientation:'h',y:1.12}, xaxis:{...baseLayout.xaxis,title:'Store size'}, yaxis:{...baseLayout.yaxis,title:'Avg weekly sales',tickformat:'$,.2s'}}, cfg);
+
+    Plotly.newPlot('corrHeatmap', [{
+      x: D.dept_corr.departments.map(String), y: D.dept_corr.departments.map(String), z: D.dept_corr.z,
+      type:'heatmap', zmin:-1, zmax:1, zmid:0, colorscale:'RdBu', reversescale:true,
+      hovertemplate:'Dept %{x} vs Dept %{y}<br>corr: %{z:.3f}<extra></extra>', colorbar:{title:'corr'}
+    }], {...baseLayout, margin:{l:55,r:60,t:25,b:55}, xaxis:{title:'Department'}, yaxis:{title:'Department'}}, cfg);
+
+    const modelRows = D.model_results;
+    Plotly.newPlot('modelChart', [{
+      x: modelRows.map(r => r.model), y: modelRows.map(r => r.WMAE), type:'bar',
+      marker:{color:modelRows.map(r => r.model === D.meta.best_model ? '#128c7e' : '#2457d6')},
+      hovertemplate:'%{x}<br>WMAE: %{y:,.0f}<extra></extra>'
+    }], {...baseLayout, margin:{l:60,r:20,t:25,b:120}, yaxis:{...baseLayout.yaxis,type:'log',title:'WMAE (log scale)'}, xaxis:{tickangle:-28}}, cfg);
+
+    async function applyFilter() {
+      const store = document.getElementById('storeFilter').value;
+      const dept = document.getElementById('deptFilter').value;
+      const status = document.getElementById('filterStatus');
+      status.textContent = 'Updating…';
+      try {
+        const res = await fetch(`/api/filter?store=${encodeURIComponent(store)}&dept=${encodeURIComponent(dept)}`);
+        const payload = await res.json();
+        if (!res.ok) throw new Error(payload.error || 'Filter request failed');
+        drawTrend(payload);
+        document.getElementById('trendSubtitle').textContent = payload.title;
+        document.getElementById('kpiTotalSales').textContent = money(payload.kpis.total_sales);
+        document.getElementById('kpiAvgWeek').textContent = money(payload.kpis.avg_weekly_sales);
+        document.getElementById('kpiAnomalies').textContent = payload.kpis.anomalies.toLocaleString();
+        status.textContent = payload.title;
+      } catch (err) {
+        status.textContent = 'Filter error: ' + err.message;
+      }
+    }
+
+    document.getElementById('applyFilter').addEventListener('click', applyFilter);
+    document.getElementById('resetFilter').addEventListener('click', () => {
+      document.getElementById('storeFilter').value = 'all';
+      document.getElementById('deptFilter').value = 'all';
+      drawTrend(initialTrend);
+      document.getElementById('trendSubtitle').textContent = 'All stores / all departments';
+      document.getElementById('kpiTotalSales').textContent = money(D.meta.total_sales);
+      document.getElementById('kpiAvgWeek').textContent = money(D.meta.avg_chain_weekly_sales);
+      document.getElementById('kpiAnomalies').textContent = D.meta.anomaly_count.toLocaleString();
+      document.getElementById('filterStatus').textContent = 'Showing full chain';
+    });
+  </script>
+  {% endif %}
+</body>
+</html>
